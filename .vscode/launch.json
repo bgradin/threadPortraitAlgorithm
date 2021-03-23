@@ -1,0 +1,19 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Generate preview image",
+      "type": "python",
+      "request": "launch",
+      "program": "main.py",
+      "console": "integratedTerminal",
+      "args": [
+        "80", // BOARD_WIDTH
+        "0.1", // PIXEL_WIDTH
+        "0.5", // LINE_TRANSPARENCY
+        "300", // NUM_NAILS
+        "2000" // MAX_ITERATIONS
+      ]
+    }
+  ]
+}

@@ -4,6 +4,7 @@ from skimage.color import rgb2gray
 from skimage.draw import line
 import numpy as np
 import matplotlib.pyplot as plt
+import os
 import sys
 
 #GET INPUT CONSTANTS HERE
@@ -15,7 +16,7 @@ LINE_TRANSPARENCY = float(args[3])  #value between 0 to 1
 NUM_NAILS = int(args[4])            #ex: 300
 MAX_ITERATIONS = int(args[5])       #ex: 4000
 NAILS_SKIP = 10
-OUTPUT_TITLE = "output"
+OUTPUT_TITLE = "output/output"
 
 pixels = int(BOARD_WIDTH/PIXEL_WIDTH)
 size = (pixels+1, pixels+1)
@@ -34,7 +35,7 @@ def cropToCircle(path):
     return output
 
 #Cropping image to a circle
-ref = cropToCircle("image.jpg")
+ref = cropToCircle("image.png")
 
 base = Image.new('L', size, color=255)
 
@@ -44,12 +45,16 @@ cx, cy = (BOARD_WIDTH/2/PIXEL_WIDTH, BOARD_WIDTH/2/PIXEL_WIDTH)  # center of cir
 xs = cx + BOARD_WIDTH*0.5*np.cos(angles)/PIXEL_WIDTH
 ys = cy + BOARD_WIDTH*0.5*np.sin(angles)/PIXEL_WIDTH
 nails = list(map(lambda x,y: (int(x),int(y)), xs,ys))
-results = open("results.txt", "w")
+
+if not os.path.exists("output"):
+    os.makedirs("output")
+
+results = open("output/results.txt", "w")
 res = ""
 
 #Uncomment to show nails plot
-#plt.scatter(xs, ys, c = 'red', s=2)
-#plt.show()
+# plt.scatter(xs, ys, c = 'red', s=2)
+# plt.show()
 
 cur_nail = 1        #start at arbitrary nail
 ref_arr = ref.load()
@@ -75,11 +80,11 @@ for i in range(MAX_ITERATIONS):
             min_avg_value = tmp_value/num_pts
 
     #Uncomment for progress pictures every x=200 iterations
-    #if i%200 == 0:
-    #    title = OUTPUT_TITLE+str(BOARD_WIDTH)+'W-'+str(PIXEL_WIDTH)+"P-"+str(NUM_NAILS)+'N-'+str(i)+'-'+str(LINE_TRANSPARENCY)+'.png'
-    #    print(title)
-    #    base.save(title)
-    #    res += "\n --- "+str(i)+" --- \n"
+    if i%200 == 0:
+       title = OUTPUT_TITLE+str(BOARD_WIDTH)+'W-'+str(PIXEL_WIDTH)+"P-"+str(NUM_NAILS)+'N-'+str(i)+'-'+str(LINE_TRANSPARENCY)+'.png'
+       print(title)
+       base.save(title)
+       res += "\n --- "+str(i)+" --- \n"
 
     subtractLine = ImageDraw.Draw(ref)
     subtractLine.line((nails[cur_nail][0],nails[cur_nail][1],nails[new_nail][0],nails[new_nail][1]), fill=255)
