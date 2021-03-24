@@ -1,11 +1,11 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "ee1c18a49b1859acfa6f2cb88acd65d1feed5b21ebe846392c88c5a2433e04fb"
+            "sha256": "df3d95d3616672d4e91516d61a85f474477975baee9849bff2ee3cbe90b25718"
         },
         "pipfile-spec": 6,
         "requires": {
-            "python_version": "3.9"
+            "python_version": "3.8"
         },
         "sources": [
             {
@@ -16,6 +16,13 @@
         ]
     },
     "default": {
+        "bresenham": {
+            "hashes": [
+                "sha256:c076b8bf730adb65cc5037d26639a5629dd63f6c1481d80b6856c99d47a1c6bf"
+            ],
+            "index": "pypi",
+            "version": "==0.2.1"
+        },
         "cycler": {
             "hashes": [
                 "sha256:1d8a5ae1ff6c5cf9b93e8811e581232ad8920aeec647c37316ceac982b08cb2d",

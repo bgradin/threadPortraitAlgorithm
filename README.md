@@ -1,6 +1,12 @@
 # threadPortraitAlgorithm
 Making portraits from thread
 
+## Debugging
+Configure `pipenv` to use the current directory for the virtual environment: `export PIPENV_VENV_IN_PROJECT="enabled"`
+`pipenv install`
+Install dependencies: `pipenv install`
+Use VSCode debug tab to debug
+
 This algorithm takes as input an image you want to draw, and will output:
 - a series of numbers corresponding to each nail where the thread should be placed (stored in results.txt), and 
 - [optional] simulated images of what the result will look like after x iterations
