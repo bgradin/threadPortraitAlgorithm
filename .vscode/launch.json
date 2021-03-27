@@ -46,7 +46,7 @@
         "0.1",        // PIXEL_WIDTH
         "1",          // LINE_TRANSPARENCY
         "300",        // NUM_NAILS
-        "10000",       // MAX_ITERATIONS
+        "100",      // MAX_ITERATIONS
         "1"           // DEBUG
       ]
     }

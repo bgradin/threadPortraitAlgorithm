@@ -18,7 +18,7 @@ MAX_ITERATIONS = int(int(args[7]) / NUM_COLORS)
 DEBUG = bool(args[8])
 
 # Section: constants
-NAILS_SKIP = 10
+MINIMUM_NAIL_DISTANCE = 10
 OUTPUT_DIRECTORY = "output"
 WHITE = (255, 255, 255)
 
@@ -52,28 +52,33 @@ def isolateColor(img, colorStart):
 def getTitle(iteration):
     return OUTPUT_DIRECTORY + "/output" + str(BOARD_WIDTH) + "W-" + str(PIXEL_WIDTH) + "P-" + str(NUM_NAILS) + "N-" + str(iteration) + "-" + str(LINE_TRANSPARENCY) + ".png"
 
-def findBestNewNail(currentNail, nails, imageArray):
-    bestNewNail = currentNail
+def findBestNailPair(nails, imageArray):
+    bestStartNailIndex = None
+    bestEndNailIndex = None
     maxHitRatio = 0
-    for possibleNail in range(currentNail + 1 + NAILS_SKIP, currentNail + len(nails) - NAILS_SKIP):
-        possibleNail = possibleNail % NUM_NAILS
-        possibleLine = line(nails[currentNail][0], nails[currentNail][1], nails[possibleNail][0], nails[possibleNail][1])
-        lineLength = len(possibleLine[0])
+    for startNailIndex in range(len(nails)):
+        startNail = nails[startNailIndex]
 
-        # Calculate number of points line hits
-        lineScore = 0
-        for j in range(lineLength):
-            pixelColor = imageArray[int(possibleLine[0][j]), int(possibleLine[1][j])]
-            if (pixelColor[0] != 255 or pixelColor[1] != 255 or pixelColor[2] != 255):
-                lineScore += 1
+        for endNailIndex in range(startNailIndex + MINIMUM_NAIL_DISTANCE, startNailIndex + len(nails) - MINIMUM_NAIL_DISTANCE):
+            endNailIndex = endNailIndex % NUM_NAILS
+            testLine = line(nails[startNailIndex][0], nails[startNailIndex][1], nails[endNailIndex][0], nails[endNailIndex][1])
+            testLineLength = len(testLine[0])
 
-        # Use the nail which hits the most colored pixels
-        hitRatio = lineScore / lineLength
-        if hitRatio > maxHitRatio:
-            bestNewNail = possibleNail
-            maxHitRatio = hitRatio
+            # Calculate number of points line hits
+            lineScore = 0
+            for i in range(testLineLength):
+                pixelColor = imageArray[int(testLine[0][i]), int(testLine[1][i])]
+                if (pixelColor[0] != 255 or pixelColor[1] != 255 or pixelColor[2] != 255):
+                    lineScore += 1
 
-    return bestNewNail if maxHitRatio > 0 else -1
+            # Use the nail which hits the most colored pixels
+            hitRatio = lineScore / testLineLength
+            if hitRatio > maxHitRatio:
+                bestStartNailIndex = startNailIndex
+                bestEndNailIndex = endNailIndex
+                maxHitRatio = hitRatio
+
+    return (bestStartNailIndex, bestEndNailIndex) if maxHitRatio > 0 else None
 
 # Section: script
 if not os.path.exists(OUTPUT_DIRECTORY):
@@ -102,18 +107,15 @@ if (DEBUG):
 # Segment source image by color
 segmentedImages = []
 segmentedImageColors = []
-segmentedImageArrays = []
 for x in range(NUM_COLORS):
     segmentedImages.append(cropToCircle(isolateColor(sourceImage, x)))
     segmentedImageColors.append(tuple(sourceImagePalette[x]))
-    segmentedImageArrays.append(segmentedImages[x].load())
     
     if (DEBUG):
         segmentedImages[x].save(OUTPUT_DIRECTORY + "/segmented-color-" + str(x) + ".png")
 
 # Draw each segmented image as lines of segmented color
 output = ""
-currentNails = [1] * len(segmentedImages)
 for iteration in range(MAX_ITERATIONS):
     if (iteration % 100 == 0):
         output += "\n --- " + str(iteration) + " --- \n"
@@ -124,25 +126,24 @@ for iteration in range(MAX_ITERATIONS):
             finalImage.save(title)
 
     for index in range(len(segmentedImages)):
-        currentNail = currentNails[index]
         segmentedImage = segmentedImages[index]
+        segmentedImageArray = segmentedImage.load()
 
-        if (currentNail == -1):
-            continue
+        pair = findBestNailPair(nails, segmentedImageArray)
+        if (pair != None):
+            startNail = nails[pair[0]]
+            endNail = nails[pair[1]]
+            lineCoordinates = (startNail[0], startNail[1], endNail[0], endNail[1])
 
-        newNail = findBestNewNail(currentNail, nails, segmentedImageArrays[index])
-        if (newNail != -1):
             # Remove line from source
             segmentedImageCanvas = ImageDraw.Draw(segmentedImage)
-            segmentedImageCanvas.line((nails[currentNail][0], nails[currentNail][1], nails[newNail][0], nails[newNail][1]), fill=WHITE)
+            segmentedImageCanvas.line(lineCoordinates, fill=WHITE)
 
             # Add line to canvas
             finalImageCanvas = ImageDraw.Draw(finalImage)
-            finalImageCanvas.line((nails[currentNail][0],nails[currentNail][1],nails[newNail][0],nails[newNail][1]), fill=segmentedImageColors[index])
+            finalImageCanvas.line(lineCoordinates, fill=segmentedImageColors[index])
 
-            output += "(" + str(index + 1) + "::" + str(currentNail) + "->" + str(newNail) + ") "
-
-        currentNails[index] = newNail
+            output += "(" + str(index + 1) + "::" + str(pair[0]) + "->" + str(pair[1]) + ") "
     
     print("Iteration " , iteration + 1 , " complete")
 
