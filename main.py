@@ -23,7 +23,7 @@ size = (pixels+1, pixels+1)
 
 def cropToCircle(path):
     img = Image.open(path).convert("L")
-    img = img.resize(size);
+    img = img.resize(size)
     mask = Image.new('L', size, 0)
     draw = ImageDraw.Draw(mask)
     draw.ellipse((0, 0) + size, fill=255)
@@ -35,15 +35,19 @@ def cropToCircle(path):
     return output
 
 #Cropping image to a circle
-ref = cropToCircle("image.png")
+ref = cropToCircle("image.jpg")
+
+# Uncomment below to save image palette
+# ref.palette.rawmode = None # why do I have to do this ?!?!
+# ref.palette.save("palette.txt")
 
 base = Image.new('L', size, color=255)
 
 #Calculating pixels and setting up nail perimeter
 angles = np.linspace(0, 2*np.pi, NUM_NAILS)  # angles to the dots
-cx, cy = (BOARD_WIDTH/2/PIXEL_WIDTH, BOARD_WIDTH/2/PIXEL_WIDTH)  # center of circle
-xs = cx + BOARD_WIDTH*0.5*np.cos(angles)/PIXEL_WIDTH
-ys = cy + BOARD_WIDTH*0.5*np.sin(angles)/PIXEL_WIDTH
+centerX, centerY = (BOARD_WIDTH/2/PIXEL_WIDTH, BOARD_WIDTH/2/PIXEL_WIDTH)  # center of circle
+xs = centerX + BOARD_WIDTH*0.5*np.cos(angles)/PIXEL_WIDTH
+ys = centerY + BOARD_WIDTH*0.5*np.sin(angles)/PIXEL_WIDTH
 nails = list(map(lambda x,y: (int(x),int(y)), xs,ys))
 
 if not os.path.exists("output"):
@@ -58,7 +62,6 @@ res = ""
 
 cur_nail = 1        #start at arbitrary nail
 ref_arr = ref.load()
-base_arr = base.load()
 
 for i in range(MAX_ITERATIONS):
     best_line = None

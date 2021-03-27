@@ -2,7 +2,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Generate preview image",
+      "name": "Generate black and white image",
       "type": "python",
       "request": "launch",
       "program": "main.py",
@@ -13,6 +13,41 @@
         "0.5", // LINE_TRANSPARENCY
         "300", // NUM_NAILS
         "2000" // MAX_ITERATIONS
+      ]
+    },
+    {
+      "name": "Generate color image",
+      "type": "python",
+      "request": "launch",
+      "program": "color.py",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "args": [
+        "image.png",  // INPUT_IMAGE
+        "5",          // NUM_COLORS
+        "80",         // BOARD_WIDTH, in cm
+        "0.1",        // PIXEL_WIDTH
+        "1",          // LINE_TRANSPARENCY
+        "300",        // NUM_NAILS
+        "2000"        // MAX_ITERATIONS
+      ]
+    },
+    {
+      "name": "Generate color image (debug)",
+      "type": "python",
+      "request": "launch",
+      "program": "color.py",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "args": [
+        "image.png",  // INPUT_IMAGE
+        "5",          // NUM_COLORS
+        "80",         // BOARD_WIDTH, in cm
+        "0.1",        // PIXEL_WIDTH
+        "1",          // LINE_TRANSPARENCY
+        "300",        // NUM_NAILS
+        "10000",       // MAX_ITERATIONS
+        "1"           // DEBUG
       ]
     }
   ]
