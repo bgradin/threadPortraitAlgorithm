@@ -6,6 +6,44 @@ import numpy as np
 import os
 import sys
 
+# TODO: Refactor to use optparse
+# TODO: Refactor data structures:
+# 1. Right now I have a list of lines, which are each a list of points.
+#    First, create a structure to represent a segmented color, which has
+#    a copy of the possible lines
+# 2. For each color, store a 2d array of points to lines, and a "rank", which is just
+#    the number of non-white pixels. Finally, store a sorted list of lines,
+#    using a new structure:
+# 3. Create a line class, which stores a list of points, and exposes a "score",
+#    which is the number of non-white pixels.
+# 4. Every time a segmented color calculates a best fit line, use the 2d point
+#    array to recalculate the score of each line containing every point on the line.
+#    Then re-sort the lines. This should be much quicker, because none of the scores
+#    need to be calculated, and most of the lines should already be in the right place.
+#
+# Note: Exposing the segmented color rank would allow me to weight the colors during
+#   rendering (right now they're weighted equally).
+#
+# If I wanted to be really cool I could thread the rendering in a coroutine, and
+#   implement locking on certain things so that I could save the current render on
+#   demand. Maybe even see if I abuse output buffering to display a render progress
+#   that updates instead of printing a new line.
+#
+# Another idea - maybe output line scores as the rendering progresses, and base
+#   script termination off of that instead of number of iterations.
+#
+# Open question - Right now big blotches are prioritized. How can I feature smaller
+#   details?
+#   - Maybe consider progressively larger concentric circles?
+#
+# Another random thought - I should check to make sure the resolution of the sources
+#   is high enough to keep lines from overlapping too often. There's probably a
+#   fairly small window I need to be in.
+#
+# Another random thought - I should try to do a pass on the segmented input image
+#   to increase the minimum blob size. In other words, I don't want a single
+#   isolated color pixel within a different color.
+
 # Section: script arguments
 args = sys.argv
 IMAGE_PATH = str(args[1])
@@ -49,36 +87,53 @@ def isolateColor(img, colorStart):
     copy.putpalette(new_palette)
     return copy
 
+def uniqueTuples(l):
+    return list(set([i for i in l]))
+
 def getTitle(iteration):
     return OUTPUT_DIRECTORY + "/output" + str(BOARD_WIDTH) + "W-" + str(PIXEL_WIDTH) + "P-" + str(NUM_NAILS) + "N-" + str(iteration) + "-" + str(LINE_TRANSPARENCY) + ".png"
 
-def findBestNailPair(nails, imageArray):
-    bestStartNailIndex = None
-    bestEndNailIndex = None
-    maxHitRatio = 0
-    for startNailIndex in range(len(nails)):
-        startNail = nails[startNailIndex]
+def getStartIndices(l):
+    return list(range(len(l)))
 
-        for endNailIndex in range(startNailIndex + MINIMUM_NAIL_DISTANCE, startNailIndex + len(nails) - MINIMUM_NAIL_DISTANCE):
-            endNailIndex = endNailIndex % NUM_NAILS
-            testLine = line(nails[startNailIndex][0], nails[startNailIndex][1], nails[endNailIndex][0], nails[endNailIndex][1])
-            testLineLength = len(testLine[0])
+def flatten(l):
+    return [idx for sub in l for idx in sub]
 
-            # Calculate number of points line hits
-            lineScore = 0
-            for i in range(testLineLength):
-                pixelColor = imageArray[int(testLine[0][i]), int(testLine[1][i])]
-                if (pixelColor[0] != 255 or pixelColor[1] != 255 or pixelColor[2] != 255):
-                    lineScore += 1
+def getPointsOnLine(p1, p2):
+    x1, y1 = p1
+    x2, y2 = p2
+    if (x1 > x2 or (x1 == x2 and y1 > y2)):
+        x1, y1 = p2
+        x2, y2 = p1
+    if (x1 == x2 and y1 == y2):
+        return [(x1, y1)]
+    elif (x1 == x2):
+        return [(x1, y) for y in range(y1, y2 + 1)]
+        
+    slope = (y2 - y1) / float(x2 - x1)
+    return [(x + x1, int(round(x * slope + y1))) for x in range(0, x2 - x1 + 1)]
 
-            # Use the nail which hits the most colored pixels
-            hitRatio = lineScore / testLineLength
-            if hitRatio > maxHitRatio:
-                bestStartNailIndex = startNailIndex
-                bestEndNailIndex = endNailIndex
-                maxHitRatio = hitRatio
+def getPossibleLines(startIndex):
+    return list(map(lambda x: (startIndex, x % NUM_NAILS), list(range(startIndex + MINIMUM_NAIL_DISTANCE, startIndex + NUM_NAILS - (MINIMUM_NAIL_DISTANCE * 2)))))
 
-    return (bestStartNailIndex, bestEndNailIndex) if maxHitRatio > 0 else None
+def getAllPossibleLines(nails):
+    return flatten(list(map(getPossibleLines, getStartIndices(nails))))
+
+def getAllUniquePossibleLines(nails):
+    return uniqueTuples(list(map(lambda pair: (pair[0], pair[1]) if pair[0] <= pair[1] else (pair[1], pair[0]), getAllPossibleLines(nails))))
+
+def getLine(l, nails):
+    startNailIndex, endNailIndex = l
+    return getPointsOnLine(nails[startNailIndex], nails[endNailIndex])
+
+def getLineScore(l, imageArray):
+    return len(list(filter(lambda x: imageArray[l[x][0], l[x][1]] != WHITE, range(len(l))))) / len(l)
+
+def sortByLineScore(lines, imageArray):
+    return sorted(lines, key=lambda l: getLineScore(l, imageArray), reverse=True)
+
+def findBestLine(allPossibleLines, imageArray):
+    return sortByLineScore(allPossibleLines, imageArray)[0]
 
 # Section: script
 if not os.path.exists(OUTPUT_DIRECTORY):
@@ -93,6 +148,7 @@ halfway = BOARD_WIDTH / 2 / PIXEL_WIDTH
 nail_x_coords = halfway + (BOARD_WIDTH / 2) * (np.cos(angles) / PIXEL_WIDTH)
 nail_y_coords = halfway + (BOARD_WIDTH / 2) * (np.sin(angles) / PIXEL_WIDTH)
 nails = list(map(lambda x, y: (int(x), int(y)), nail_x_coords, nail_y_coords))
+allPossibleLines = list(map(lambda l: getPointsOnLine(nails[l[0]], nails[l[1]]), getAllUniquePossibleLines(nails)))
 
 sourceImage = Image.open(IMAGE_PATH).resize(size).convert("P", palette=Image.ADAPTIVE, colors=NUM_COLORS)
 sourceImagePalette = imgToPaletteArray(sourceImage)
@@ -117,7 +173,7 @@ for x in range(NUM_COLORS):
 # Draw each segmented image as lines of segmented color
 output = ""
 for iteration in range(MAX_ITERATIONS):
-    if (iteration % 100 == 0):
+    if (iteration % 10 == 0):
         output += "\n --- " + str(iteration) + " --- \n"
 
         if (DEBUG):
@@ -129,21 +185,19 @@ for iteration in range(MAX_ITERATIONS):
         segmentedImage = segmentedImages[index]
         segmentedImageArray = segmentedImage.load()
 
-        pair = findBestNailPair(nails, segmentedImageArray)
-        if (pair != None):
-            startNail = nails[pair[0]]
-            endNail = nails[pair[1]]
-            lineCoordinates = (startNail[0], startNail[1], endNail[0], endNail[1])
+        bestLine = findBestLine(allPossibleLines, segmentedImageArray)
+        startNail, endNail = (bestLine[0], bestLine[len(bestLine) - 1])
+        lineCoordinates = (startNail[0], startNail[1], endNail[0], endNail[1])
 
-            # Remove line from source
-            segmentedImageCanvas = ImageDraw.Draw(segmentedImage)
-            segmentedImageCanvas.line(lineCoordinates, fill=WHITE)
+        # Remove line from source
+        segmentedImageCanvas = ImageDraw.Draw(segmentedImage)
+        segmentedImageCanvas.line(lineCoordinates, fill=WHITE)
 
-            # Add line to canvas
-            finalImageCanvas = ImageDraw.Draw(finalImage)
-            finalImageCanvas.line(lineCoordinates, fill=segmentedImageColors[index])
+        # Add line to canvas
+        finalImageCanvas = ImageDraw.Draw(finalImage)
+        finalImageCanvas.line(lineCoordinates, fill=segmentedImageColors[index])
 
-            output += "(" + str(index + 1) + "::" + str(pair[0]) + "->" + str(pair[1]) + ") "
+        output += "(" + str(index + 1) + "::" + str(nails.index(startNail)) + "->" + str(nails.index(endNail)) + ") "
     
     print("Iteration " , iteration + 1 , " complete")
 

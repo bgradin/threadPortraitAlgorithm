@@ -9,6 +9,7 @@ scikit-image = "*"
 matplotlib = "*"
 numpy = "*"
 bresenham = "*"
+shapely = "*"
 
 [dev-packages]
 
