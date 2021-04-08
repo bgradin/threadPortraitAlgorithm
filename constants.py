@@ -1,0 +1,2 @@
+PIXEL_WIDTH = 0.1
+WHITE = (255, 255, 255)
